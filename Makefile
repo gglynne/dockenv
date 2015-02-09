@@ -78,7 +78,6 @@ backup: ip
 restore:
 	@ssh docker@${IP} 'for FP in  ${BACKUPS}/* ; do docker load -i $$FP; done'
 
-
 # build base python image
 buildpython: ip
 	@ssh docker@${IP} 'docker build -t python ${PROJECTDIR}'
@@ -93,15 +92,22 @@ testbash: ip
 	@echo ssh docker@${IP}
 	@echo docker run -it --rm -v $${HOME}/dockenv:/usr/src/dockenv python /bin/bash
 
-# start data volume detached
-testdata: ip
-	@ssh docker@${IP} 'cd ${PROJECTDIR}; ${FIG} up -d data'
-
 # run fig build
 figbuild: ip
 	#echo do this manually:
 	@echo ssh docker@${IP} 'cd ${PROJECTDIR}; ${FIG} build'
 
+# --------------------------------------------------- scratch 2015-02-09 ------------------------
+
+
+
+
+
+
+
+# start data volume detached
+testdata: ip
+	@ssh docker@${IP} 'cd ${PROJECTDIR}; ${FIG} up -d data'
 
 
 
