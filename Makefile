@@ -3,7 +3,6 @@
 # , 2015-01-29 11:39
 #
 
-VM = docker@192.168.59.103
 GITHUB = git@github.com:gglynne/dockenv.git
 PROJECTDIR = dockenv
 WINHOME = `cygpath $${USERPROFILE}`# /cygdrive/c/Users/ets
@@ -17,24 +16,16 @@ FIG='docker run --rm -it -v \`pwd\`:/app -v /var/run/docker.sock:/var/run/docker
 # if you want to run FIG in an interactive shell, paste this one into the terminal:
 #FIG='docker run --rm -it -v /home/docker/dockenv:/app -v /var/run/docker.sock:/var/run/docker.sock -e FIG_PROJECT_NAME=/home/docker/dockenv dduportal/fig'
 
-# backup all images from docker vm to windows host
-backup:
-	ssh ${VM} '[[ -d ${BACKUPS} ]] || mkdir ${BACKUPS}'
-	ssh ${VM} 'for id in $$(docker images -q | sort -u); do FP=${BACKUPS}/$${id}.tgz; [[ -f $$FP ]] ||  docker save $${id} | gzip -c > $$FP ; done'
 
-restore:
-	@ssh ${VM} 'for FP in  ${BACKUPS}/* ; do docker load -i $$FP; done'
+
+# fetch docker vm ip address
 
 upgrade:
 	-@(export HOME=${WINHOME}; ${BOOT2DOCKER} upgrade)
 
-addshared:
-	@echo Mounting vbox shared folder as /home/docker/${PROJECTDIR}...
-	@ssh ${VM} "[ -d /home/docker/${PROJECTDIR} ] || mkdir /home/docker/${PROJECTDIR}"
-	@ssh ${VM} "sudo mount -t vboxsf /home/docker/${PROJECTDIR} ${PROJECTDIR}"
 
 # delete any existing boot2docker-vm and build a new one
-devup:
+devup: 
 	@echo Recreating VM...
 	-@(export HOME=${WINHOME}; ${BOOT2DOCKER} down  ) 2> /dev/null
 	-@(export HOME=${WINHOME}; ${BOOT2DOCKER} delete ) 2> /dev/null
@@ -43,25 +34,31 @@ devup:
 	@echo Adding shared folder ${PROJECTDIR}...
 	@(export HOME=${WINHOME}; "${VBOX}" sharedfolder add "boot2docker-vm" --name "${PROJECTDIR}" --hostpath "C:\cygwin\home\ets\mandrake\study\docker\dockenv")
 
-	@echo 'Starting VM to copy ssh keys across...'
+	@echo Starting VM...
 	@(export HOME=${WINHOME}; ${BOOT2DOCKER} up )
-	@grep -v "192\.168\.59\.103" ~/.ssh/known_hosts > ~/.ssh/tmp
+
+	@echo Getting boot2docker IP address...
+	@$(eval IP := $(shell export HOME=${WINHOME};${BOOT2DOCKER} ip 2> /dev/null) )
+	@echo ${IP}
+	@echo 'Copying ssh keys across...'
+	@echo grep -v  ${IP} ~/.ssh/known_hosts > ~/.ssh/tmp
 	@cat ~/.ssh/tmp > ~/.ssh/known_hosts
 	@rm ~/.ssh/tmp
 	@echo Enter tcuser if asked for the password. TODO: automate this
-	@ssh-copy-id ${VM}
-
+	@ssh-copy-id docker@${IP}
+	@echo Getting boot2docker IP address...
+	@$(eval IP := $(shell export HOME=${WINHOME};${BOOT2DOCKER} ip 2> /dev/null) )
 	@echo Mounting vbox shared folder as /home/docker/${PROJECTDIR}...
-	@ssh ${VM} "[ -d /home/docker/${PROJECTDIR} ] || mkdir /home/docker/${PROJECTDIR}"
-	@ssh ${VM} "sudo mount -t vboxsf /home/docker/${PROJECTDIR} ${PROJECTDIR}"
-
+	@ssh docker@${IP} "[ -d /home/docker/${PROJECTDIR} ] || mkdir /home/docker/${PROJECTDIR}"
+	@ssh docker@${IP} "sudo mount -t vboxsf /home/docker/${PROJECTDIR} ${PROJECTDIR}"
 	@echo Restoring backed-up images...
-	@ssh ${VM} 'if [ -d ${BACKUPS} ]; then for f in  ${BACKUPS}/* ; do docker load -i $$f; done; fi'
+	@ssh docker@${IP} 'if [ -d ${BACKUPS} ]; then for f in  ${BACKUPS}/* ; do docker load -i $$f; done; fi'
 	@# note single quotes to stop expressions being evaluated client side
 
 # start/stop an existing boot2docker-vm  (vm disk is memory based, 'down' command will delete config)
 vmup:
 	(export HOME=${WINHOME}; ${BOOT2DOCKER} up)
+
 vmdown:
 	(export HOME=${WINHOME}; ${BOOT2DOCKER} save)
 
@@ -69,54 +66,65 @@ vmdown:
 ssh:
 	(export HOME=${WINHOME}; ${BOOT2DOCKER} ssh)
 
+.PHONY: ip
+ip:
+	@$(eval IP := $(shell export HOME=${WINHOME};${BOOT2DOCKER} ip 2> /dev/null) )
+
+# backup all images from docker vm to windows host
+backup: ip
+	ssh docker@${IP} '[[ -d ${BACKUPS} ]] || mkdir ${BACKUPS}'
+	ssh docker@${IP} 'for id in $$(docker images -q | sort -u); do FP=${BACKUPS}/$${id}.tgz; [[ -f $$FP ]] ||  docker save $${id} | gzip -c > $$FP ; done'
+
+restore:
+	@ssh docker@${IP} 'for FP in  ${BACKUPS}/* ; do docker load -i $$FP; done'
+
 
 # build base python image
-buildpython:
-	@ssh ${VM} 'docker build -t python ${PROJECTDIR}'
+buildpython: ip
+	@ssh docker@${IP} 'docker build -t python ${PROJECTDIR}'
 
 # test the base python image
-testpython:
-	@ssh ${VM} 'docker run -it --rm -v $${HOME}/dockenv:/usr/src/dockenv python'
-	# if there are breakpoints in the code, this runs better in an interactive shell:
-	# cd /home/ets/mandrake/study/docker/dockenv
-	# ssh docker@192.168.59.103
-	# docker run -it --rm -v ${HOME}/dockenv:/usr/src/dockenv python
+testpython: ip
+	@echo ssh docker@${IP}
+	@echo 'docker run -it --rm -v $${HOME}/dockenv:/usr/src/dockenv python'
 
 # run bash in the python image to test: readline doesn't work unless you run these commands manually
-testbash:
-	@ssh ${VM} 'docker run -it --rm -v $${HOME}/dockenv:/usr/src/dockenv python /bin/bash'
-
-
-# run fig build
-figbuild:
-	@ssh ${VM} 'cd ${PROJECTDIR}; ${FIG} build'
+testbash: ip
+	@echo ssh docker@${IP}
+	@echo docker run -it --rm -v $${HOME}/dockenv:/usr/src/dockenv python /bin/bash
 
 # start data volume detached
-testdata:
-	@ssh ${VM} 'cd ${PROJECTDIR}; ${FIG} up -d data'
+testdata: ip
+	@ssh docker@${IP} 'cd ${PROJECTDIR}; ${FIG} up -d data'
+
+# run fig build
+figbuild: ip
+	#echo do this manually:
+	@echo ssh docker@${IP} 'cd ${PROJECTDIR}; ${FIG} build'
+
 
 
 
 # scratch ------------------------------
 
 asdfsdaas:
-	@ssh ${VM} 'cd ${PROJECTDIR}; ${FIG} up'
+	@ssh docker@${IP} 'cd ${PROJECTDIR}; ${FIG} up'
 
 
 asfasfsad3:
-	@ssh ${VM} '${FIG} build'
+	@ssh docker@${IP} '${FIG} build'
 
 web:
-	@ssh ${VM} '${FIG} run web'
+	@ssh docker@${IP} '${FIG} run web'
 
 
 study:
-	@ssh ${VM} 'docker run -it --privileged --net host crosbymichael/make-containers'
+	@ssh docker@${IP} 'docker run -it --privileged --net host crosbymichael/make-containers'
 
 
 asdfs:
-	@ssh ${VM} '(alias fig='"\'"'ls -la'"\'"';fig)'
-	@ssh ${VM} 'cd dockenv; ${FIG} run web /bin/bash'
+	@ssh docker@${IP} '(alias fig='"\'"'ls -la'"\'"';fig)'
+	@ssh docker@${IP} 'cd dockenv; ${FIG} run web /bin/bash'
 
 
 # adds a fig alias (nightmare escaping). unfortunately his won't work with ssh commands, see ${FIG}
