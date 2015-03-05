@@ -25,35 +25,38 @@ upgrade:
 
 
 # delete any existing boot2docker-vm and build a new one
-devup: 
+devup1: 
 	@echo Recreating VM...
 	-@(export HOME=${WINHOME}; ${BOOT2DOCKER} down  ) 2> /dev/null
 	-@(export HOME=${WINHOME}; ${BOOT2DOCKER} delete ) 2> /dev/null
 	-@(export HOME=${WINHOME}; ${BOOT2DOCKER} init ) 2> /dev/null
-
 	@echo Adding shared folder ${PROJECTDIR}...
 	@(export HOME=${WINHOME}; "${VBOX}" sharedfolder add "boot2docker-vm" --name "${PROJECTDIR}" --hostpath "C:\cygwin\home\ets\mandrake\study\docker\dockenv")
-
 	@echo Starting VM...
 	@(export HOME=${WINHOME}; ${BOOT2DOCKER} up )
-
 	@echo Getting boot2docker IP address...
 	@$(eval IP := $(shell export HOME=${WINHOME};${BOOT2DOCKER} ip 2> /dev/null) )
-	@echo ${IP}
-	@echo 'Copying ssh keys across...'
-	@echo grep -v  ${IP} ~/.ssh/known_hosts > ~/.ssh/tmp
-	@cat ~/.ssh/tmp > ~/.ssh/known_hosts
-	@rm ~/.ssh/tmp
-	@echo Enter tcuser if asked for the password. TODO: automate this
-	@ssh-copy-id docker@${IP}
-	@echo Getting boot2docker IP address...
-	@$(eval IP := $(shell export HOME=${WINHOME};${BOOT2DOCKER} ip 2> /dev/null) )
+	grep -v  ${IP} ~/.ssh/known_hosts > ~/.ssh/tmp
+	cat ~/.ssh/tmp > ~/.ssh/known_hosts
+	rm ~/.ssh/tmp
+	sshpass.exe -ptcuser ssh -o StrictHostKeyChecking=no docker@${IP} ls
+	@sshpass.exe -ptcuser ssh-copy-id docker@${IP}
 	@echo Mounting vbox shared folder as /home/docker/${PROJECTDIR}...
 	@ssh docker@${IP} "[ -d /home/docker/${PROJECTDIR} ] || mkdir /home/docker/${PROJECTDIR}"
 	@ssh docker@${IP} "sudo mount -t vboxsf /home/docker/${PROJECTDIR} ${PROJECTDIR}"
+	@echo now run 'make ssh' and run fig commands!
+
+
+nenex:
 	@echo Restoring backed-up images...
 	@ssh docker@${IP} 'if [ -d ${BACKUPS} ]; then for f in  ${BACKUPS}/* ; do docker load -i $$f; done; fi'
+
 	@# note single quotes to stop expressions being evaluated client side
+
+test:
+	@$(eval STATUS := $(shell export HOME=${WINHOME};${BOOT2DOCKER} status 2> /dev/null) )
+	@if [[ ${STATUS} != "running" ]]; then (export HOME=${WINHOME}; ${BOOT2DOCKER} up); fi
+
 
 # start/stop an existing boot2docker-vm  (vm disk is memory based, 'down' command will delete config)
 vmup:

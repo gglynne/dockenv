@@ -1,4 +1,5 @@
-FROM python:3.4.2
+#FROM python:3.4.2
+FROM python:3.3.6-wheezy
 MAINTAINER ennylg
 
 # move to this dir on the image
