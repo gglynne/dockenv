@@ -1,38 +1,33 @@
-# https://registry.hub.docker.com/_/nginx/
-# base : debian:wheezy
-nginx:
-    image: nginx:1.7.9
-    volumes:
-        - /home/docker/dockenv/nginx/media:/usr/share/nginx/html:ro
-        - /home/docker/dockenv/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    ports:
-        - "8080:80"
-    command: nginx -g "daemon off;"
+#db:
+  #image: postgres
+#web:
+  #build: .
+  #command: python manage.py runserver 0.0.0.0:8000
+  #volumes:
+    #- .:/usr/src/dockenv
+  #ports:
+    #- "8000:8000"
+  #links:
+    #- db
+    #
 
-# https://registry.hub.docker.com/_/python/
-# base : debian:wheezy
-web:
-    build: .
-    volumes: 
-        # ro was removed for the django-admin command to work
-        - /home/docker/dockenv/web/src:/usr/src/dockenv
-    ports:
-        - "8000:8000"
-    # will start in /usr/src/dockenv (see Dockfile)
-    command: python manage.py runserver 0.0.0.0:8000
 
-# https://registry.hub.docker.com/u/fike/debian-postgresql/
-# base : debian:wheezy
-database:
-    image: fike/debian-postgresql:9.4
-    volumes_from:
-        - dbdata
-    ports:
-        - "5432"
-    command: true
-
-dbdata:
+data:
     image: busybox
     volumes: 
-        - /var/lib/postgresql
+        - /var/lib/share
     command: true
+
+py:
+    build: .
+    volumes: 
+        - /home/docker/dockenv:/usr/src/dockenv:ro
+    volumes_from:
+        - data
+    command: bash -c "ls /var/lib/share/"
+    links: 
+        - dumb
+    
+dumb:
+    image: busybox
+    command: top
