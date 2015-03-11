@@ -5,16 +5,17 @@ data:
         - /var/lib/share
     command: true
 
-#py:
-    #build: .
-    #volumes: 
-        #- /home/docker/dockenv:/usr/src/dockenv:ro
-    #volumes_from:
-        #- data
-    #command: bash -c "ls /var/lib/share/"
-    #links: 
-        #- dumb
+py:
+    build: .
+    volumes: 
+        - /home/docker/dockenv:/usr/src/dockenv:ro
+    volumes_from:
+        - data
+    command: true
+    links: 
+        - dumb
 
+#command: bash -c "ls /var/lib/share/"
 #db:
     #image: postgres:9.3
 

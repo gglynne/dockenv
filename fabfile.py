@@ -90,7 +90,6 @@ def fig(cmd):
 
 
 
-
 def up():
     fig("up")
 
