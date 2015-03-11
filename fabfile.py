@@ -110,7 +110,8 @@ def push():
     """ push changes from localdir onto github, then pull them onto the server """
 
     local('git add .')
-    local('git commit -a -m "`date`"');
+    with settings(warn_only=True):
+        local('git commit -a -m "`date`"');
     local('git push')
     with cd(code_dir):
         run('git pull')
