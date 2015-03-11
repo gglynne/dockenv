@@ -12,9 +12,9 @@ py:
     volumes_from:
         - data
     command: true
-    links: 
-        - dumb
 
+#links: 
+    #- dumb
 #command: bash -c "ls /var/lib/share/"
 #db:
     #image: postgres:9.3
