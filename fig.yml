@@ -1,5 +1,23 @@
+
+data:
+    image: busybox
+    volumes: 
+        - /var/lib/share
+    command: true
+
+#py:
+    #build: .
+    #volumes: 
+        #- /home/docker/dockenv:/usr/src/dockenv:ro
+    #volumes_from:
+        #- data
+    #command: bash -c "ls /var/lib/share/"
+    #links: 
+        #- dumb
+
 #db:
-  #image: postgres
+    #image: postgres:9.3
+
 #web:
   #build: .
   #command: python manage.py runserver 0.0.0.0:8000
@@ -11,23 +29,7 @@
     #- db
     #
 
-
-data:
-    image: busybox
-    volumes: 
-        - /var/lib/share
-    command: true
-
-py:
-    build: .
-    volumes: 
-        - /home/docker/dockenv:/usr/src/dockenv:ro
-    volumes_from:
-        - data
-    command: bash -c "ls /var/lib/share/"
-    links: 
-        - dumb
     
-dumb:
-    image: busybox
-    command: top
+#dumb:
+    #image: busybox
+    #command: top
